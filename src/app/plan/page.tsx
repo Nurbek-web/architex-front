@@ -36,18 +36,35 @@ export default function Component() {
 
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/upload-exterior", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            data: ["Hello!!"],
+          }),
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to generate image");
+      const responseData = await response.json();
+      const eventId = responseData.data[0];
+
+      const resultResponse = await fetch(
+        `https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict/${eventId}`,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!resultResponse.ok) {
+        throw new Error("Failed to fetch the result");
       }
 
-      const data = await response.json();
-      console.log(data);
-      setGeneratedImage(data[1]);
+      const resultData = await resultResponse.json();
+      setGeneratedImage(resultData.data[1]);
       setError(""); // Reset error state on successful image generation
     } catch (error) {
       console.error("Error generating image:", error);
