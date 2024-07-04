@@ -3,72 +3,84 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+const HUGGING_FACE_API_URL =
+  "https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict";
+
 export default function Component() {
-  const [imageFile, setImageFile] = useState(null);
   const [prompt, setPrompt] = useState("");
-  const [generatedImage, setGeneratedImage] = useState(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileChange = (e: any) => {
-    setImageFile(e.target.files[0]);
-  };
-
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!imageFile) {
-      alert("Please upload an image.");
-      return;
-    }
 
     if (!prompt.trim()) {
       alert("Please provide a prompt.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("image", imageFile);
-    formData.append("prompt", prompt);
+    console.log("Your prompt:", prompt);
 
     try {
       setLoading(true);
-      const response = await fetch(
-        "https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            data: ["Hello!!"],
-          }),
-        }
-      );
 
-      const responseData = await response.json();
-      const eventId = responseData.data[0];
+      // Send initial request to Hugging Face API
+      const initialResponse = await fetch(HUGGING_FACE_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: [prompt] }),
+      });
 
-      const resultResponse = await fetch(
-        `https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict/${eventId}`,
-        {
-          method: "GET",
-        }
-      );
+      const initialResponseText = await initialResponse.text();
+      console.log("Initial Response Text:", initialResponseText);
 
-      if (!resultResponse.ok) {
-        throw new Error("Failed to fetch the result");
+      if (!initialResponse.ok) {
+        throw new Error(`Initial request failed: ${initialResponseText}`);
       }
 
-      const resultData = await resultResponse.json();
-      setGeneratedImage(resultData.data[1]);
+      const initialResult = JSON.parse(initialResponseText);
+      console.log("Initial Result:", initialResult);
+      const eventId = initialResult.event_id;
+
+      // Fetch the generated image URL
+      const finalResponse = await fetch(`${HUGGING_FACE_API_URL}/${eventId}`, {
+        method: "GET",
+      });
+
+      const finalResponseText = await finalResponse.text();
+      console.log("Final Response Text:", finalResponseText);
+
+      if (!finalResponse.ok) {
+        throw new Error(`Final request failed: ${finalResponseText}`);
+      }
+
+      // Extract the JSON data from the SSE response
+      const dataLine = finalResponseText
+        .split("\n")
+        .find((line) => line.startsWith("data: "));
+      if (!dataLine) {
+        throw new Error("No data found in the response");
+      }
+
+      const finalResult = JSON.parse(dataLine.replace("data: ", ""));
+      console.log("Final Result:", finalResult);
+
+      if (!finalResult || !finalResult[0] || !finalResult[0].url) {
+        throw new Error("Invalid result structure");
+      }
+
+      const generatedImageUrl = finalResult[0].url;
+
+      setGeneratedImage(generatedImageUrl);
       setError(""); // Reset error state on successful image generation
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating image:", error);
-      setError("Failed to generate image");
+      setError("Failed to generate image: " + error.message);
       setGeneratedImage(null); // Reset generatedImage state to null on error
     } finally {
       setLoading(false);
@@ -83,8 +95,7 @@ export default function Component() {
             Generate AI-Powered Images
           </h1>
           <p className="text-muted-foreground">
-            Upload an image and provide a prompt to generate a unique AI-created
-            image.
+            Provide a prompt to generate a unique AI-created image.
           </p>
         </div>
         <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
@@ -94,15 +105,11 @@ export default function Component() {
               id="prompt"
               name="prompt"
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e: any) => setPrompt(e.target.value)}
               placeholder="Describe the image you want to generate..."
               className="mt-1"
               rows={3}
             />
-          </div>
-          <div>
-            <Label htmlFor="image">Upload Image</Label>
-            <Input id="photo" type="file" onChange={handleFileChange} />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Generating..." : "Generate Image"}
@@ -132,26 +139,5 @@ export default function Component() {
         </div>
       </div>
     </div>
-  );
-}
-
-function CloudUploadIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-      <path d="M12 12v9" />
-      <path d="m16 16-4-4-4 4" />
-    </svg>
   );
 }

@@ -5,13 +5,50 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  MultiSelector,
+  MultiSelectorContent,
+  MultiSelectorInput,
+  MultiSelectorItem,
+  MultiSelectorList,
+  MultiSelectorTrigger,
+} from "@/components/ui/multiselect";
+import { ArrowLeftIcon, ImageIcon } from "../../../public/icons";
+
+const materialsOptions = [
+  { label: "Brick", value: "brick" },
+  { label: "Stone", value: "stone" },
+  { label: "Wood", value: "wood" },
+  { label: "Vinyl Siding", value: "vinyl_siding" },
+  { label: "Stucco", value: "stucco" },
+  { label: "Concrete", value: "concrete" },
+  { label: "Aluminum", value: "aluminum" },
+  { label: "Bamboo", value: "bamboo" },
+  { label: "Marble", value: "marble" },
+  { label: "Granite", value: "granite" },
+  { label: "Terracotta", value: "terracotta" },
+  { label: "Cedar", value: "cedar" },
+  { label: "Iron", value: "iron" },
+  { label: "PVC", value: "pvc" },
+  { label: "Composite Wood", value: "composite_wood" },
+];
 
 export default function Component() {
   const [imageFile, setImageFile] = useState(null);
-  const [prompt, setPrompt] = useState("");
   const [generatedImage, setGeneratedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [exteriorStyle, setExteriorStyle] = useState("");
+  const [environment, setEnvironment] = useState("");
+  const [time, setTime] = useState("");
 
   const handleFileChange = (e: any) => {
     setImageFile(e.target.files[0]);
@@ -25,17 +62,18 @@ export default function Component() {
       return;
     }
 
-    if (!prompt.trim()) {
-      alert("Please provide a prompt.");
-      return;
-    }
-
     const formData = new FormData();
     formData.append("image", imageFile);
-    formData.append("prompt", prompt);
+    formData.append("materials", JSON.stringify(selectedMaterials));
+    formData.append("exteriorStyle", exteriorStyle);
+    formData.append("environment", environment);
+    formData.append("time", time);
 
     try {
       setLoading(true);
+
+      console.log(formData);
+
       const response = await fetch("http://localhost:5000/upload-exterior", {
         method: "POST",
         body: formData,
@@ -46,8 +84,7 @@ export default function Component() {
       }
 
       const data = await response.json();
-      console.log(data);
-      setGeneratedImage(data[1]);
+      setGeneratedImage(data.imageUrl);
       setError(""); // Reset error state on successful image generation
     } catch (error) {
       console.error("Error generating image:", error);
@@ -59,82 +96,175 @@ export default function Component() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-      <div className="max-w-xl w-full px-4 py-8 md:px-6 md:py-12">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Generate AI-Powered Images
-          </h1>
-          <p className="text-muted-foreground">
-            Upload an image and provide a prompt to generate a unique AI-created
-            image.
-          </p>
+    <div className="flex flex-col md:flex-row min-h-screen text-white">
+      <div className="flex-1 flex flex-col items-center justify-center">
+        {generatedImage ? (
+          <img
+            src={generatedImage}
+            alt="Generated"
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <ImageIcon className="w-48 h-48 text-gray-400" />
+        )}
+      </div>
+      <div className="w-full md:w-96 bg-gray-800 p-6">
+        <div className="flex justify-between mb-4">
+          <button className="text-white">
+            <ArrowLeftIcon className="w-6 h-6" />
+          </button>
         </div>
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="prompt">Prompt</Label>
-            <Textarea
-              id="prompt"
-              name="prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the image you want to generate..."
-              className="mt-1"
-              rows={3}
+            <Label htmlFor="image">Upload Image</Label>
+            <Input
+              className="text-black"
+              id="image"
+              type="file"
+              onChange={handleFileChange}
             />
           </div>
           <div>
-            <Label htmlFor="image">Upload Image</Label>
-            <Input id="photo" type="file" onChange={handleFileChange} />
+            <Label className="block mb-2">Select an exterior style</Label>
+            <Select onValueChange={setExteriorStyle}>
+              <SelectTrigger className="text-black">
+                <SelectValue
+                  placeholder="Select an option"
+                  className="text-black"
+                />
+              </SelectTrigger>
+              <SelectContent className="text-black">
+                <SelectItem value="modern" className="text-black">
+                  modern
+                </SelectItem>
+                <SelectItem value="minimalist" className="text-black">
+                  minimalist
+                </SelectItem>
+                <SelectItem value="farmhouse" className="text-black">
+                  farmhouse
+                </SelectItem>
+                <SelectItem value="contemporary" className="text-black">
+                  contemporary
+                </SelectItem>
+                <SelectItem value="scandinavian" className="text-black">
+                  scandinavian
+                </SelectItem>
+                <SelectItem value="zen" className="text-black">
+                  zen
+                </SelectItem>
+                <SelectItem value="industrial" className="text-black">
+                  industrial
+                </SelectItem>
+                <SelectItem value="rustic" className="text-black">
+                  rustic
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="block mb-2">Select materials</Label>
+            <MultiSelector
+              values={selectedMaterials}
+              onValuesChange={setSelectedMaterials}
+              loop={false}
+            >
+              <MultiSelectorTrigger>
+                <MultiSelectorInput placeholder="Select materials" />
+              </MultiSelectorTrigger>
+              <MultiSelectorContent>
+                <MultiSelectorList>
+                  {materialsOptions.map((material, index) => (
+                    <MultiSelectorItem key={index} value={material.value}>
+                      {material.label}
+                    </MultiSelectorItem>
+                  ))}
+                </MultiSelectorList>
+              </MultiSelectorContent>
+            </MultiSelector>
+          </div>
+          <div>
+            <Label className="block mb-2">Select an environment</Label>
+            <Select onValueChange={setEnvironment}>
+              <SelectTrigger className="text-black">
+                <SelectValue
+                  placeholder="Select an option"
+                  className="text-black"
+                />
+              </SelectTrigger>
+              <SelectContent className="text-black">
+                <SelectItem value="residential" className="text-black">
+                  residential
+                </SelectItem>
+                <SelectItem value="rural" className="text-black">
+                  rural
+                </SelectItem>
+                <SelectItem value="forest" className="text-black">
+                  forest
+                </SelectItem>
+                <SelectItem value="snowy" className="text-black">
+                  snowy
+                </SelectItem>
+                <SelectItem value="coastal" className="text-black">
+                  coastal
+                </SelectItem>
+                <SelectItem value="mountainous" className="text-black">
+                  mountainous
+                </SelectItem>
+                <SelectItem value="suburban" className="text-black">
+                  suburban
+                </SelectItem>
+                <SelectItem value="desert" className="text-black">
+                  desert
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="block mb-2">Select a time</Label>
+            <Select onValueChange={setTime}>
+              <SelectTrigger className="text-black">
+                <SelectValue
+                  placeholder="Select an option"
+                  className="text-black"
+                />
+              </SelectTrigger>
+              <SelectContent className="text-black">
+                <SelectItem value="day" className="text-black">
+                  day
+                </SelectItem>
+                <SelectItem value="night" className="text-black">
+                  night
+                </SelectItem>
+                <SelectItem value="sunset" className="text-black">
+                  sunset
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Generating..." : "Generate Image"}
           </Button>
         </form>
-      </div>
-      <div className="max-w-xl w-full px-4 py-8 md:px-6 md:py-12">
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Your Generated Image
-          </h2>
-          <div className="aspect-w-16 aspect-h-9 overflow-hidden rounded-lg bg-muted">
-            {generatedImage !== null ? (
-              <img
-                src={generatedImage}
-                alt="Generated Image"
-                className="w-full h-full object-contain"
-              />
-            ) : error ? (
-              <p className="text-base text-red-500">{error}</p>
-            ) : (
-              <p className="text-base text-muted-foreground">
-                No image generated yet.
-              </p>
-            )}
-          </div>
+        <div className="mt-4 flex justify-between">
+          <button
+            className="text-white"
+            onClick={() => {
+              setImageFile(null);
+              setGeneratedImage(null);
+              setSelectedMaterials([]);
+              setError("");
+              setExteriorStyle("");
+              setEnvironment("");
+              setTime("");
+            }}
+          >
+            Clear All
+          </button>
+          <button className="bg-yellow-500 text-black px-4 py-2 rounded">
+            Save
+          </button>
         </div>
       </div>
     </div>
-  );
-}
-
-function CloudUploadIcon(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-      <path d="M12 12v9" />
-      <path d="m16 16-4-4-4 4" />
-    </svg>
   );
 }
