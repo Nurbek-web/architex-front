@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,7 +83,9 @@ export default function Component() {
       }
 
       const data = await response.json();
-      setGeneratedImage(data.imageUrl);
+      console.log("Successfully sended request and got response:", data);
+
+      setGeneratedImage(data[1]);
       setError(""); // Reset error state on successful image generation
     } catch (error) {
       console.error("Error generating image:", error);
@@ -101,14 +102,15 @@ export default function Component() {
         {generatedImage ? (
           <img
             src={generatedImage}
-            alt="Generated"
-            className="w-full h-full object-contain"
+            alt="Your dream house"
+            className="w-full p-2 rounded object-contain"
+            style={{ borderRadius: "20px" }}
           />
         ) : (
           <ImageIcon className="w-48 h-48 text-gray-400" />
         )}
       </div>
-      <div className="w-full md:w-96 bg-gray-800 p-6">
+      <div className="w-full rounded-lg md:w-96 bg-gray-800 p-6">
         <div className="flex justify-between mb-4">
           <button className="text-white">
             <ArrowLeftIcon className="w-6 h-6" />
@@ -260,9 +262,7 @@ export default function Component() {
           >
             Clear All
           </button>
-          <button className="bg-yellow-500 text-black px-4 py-2 rounded">
-            Save
-          </button>
+          <Button className="px-4 py-2 rounded">Save</Button>
         </div>
       </div>
     </div>

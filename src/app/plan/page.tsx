@@ -4,138 +4,166 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-
-const HUGGING_FACE_API_URL =
-  "https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import { ArrowLeftIcon, ImageIcon } from "../../../public/icons";
 
 export default function Component() {
-  const [prompt, setPrompt] = useState("");
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [bedrooms, setBedrooms] = useState("");
+  const [bathrooms, setBathrooms] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    if (!prompt.trim()) {
-      alert("Please provide a prompt.");
-      return;
-    }
+    const fullPrompt = `${prompt}. Number of bedrooms: ${bedrooms}. Number of bathrooms: ${bathrooms}.`;
 
-    console.log("Your prompt:", prompt);
+    console.log(fullPrompt);
 
     try {
-      setLoading(true);
+      // First request to get the event ID
+      const response = await fetch(
+        "https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            data: [fullPrompt],
+          }),
+        }
+      );
 
-      // Send initial request to Hugging Face API
-      const initialResponse = await fetch(HUGGING_FACE_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ data: [prompt] }),
-      });
+      const result = await response.json();
+      console.log("result: ", result.event_id);
+      const eventId = result.event_id;
 
-      const initialResponseText = await initialResponse.text();
-      console.log("Initial Response Text:", initialResponseText);
+      console.log("got eventID", eventId);
 
-      if (!initialResponse.ok) {
-        throw new Error(`Initial request failed: ${initialResponseText}`);
-      }
+      // Second request to get the generated image using the event ID
+      const imageResponse = await fetch(
+        `https://actuallyastarfish-muzammil-eds-stable-diffusion-f150d63.hf.space/call/predict/${eventId}`
+      );
 
-      const initialResult = JSON.parse(initialResponseText);
-      console.log("Initial Result:", initialResult);
-      const eventId = initialResult.event_id;
+      const imageResult = await imageResponse.json();
+      setGeneratedImage(imageResult.data[0]);
 
-      // Fetch the generated image URL
-      const finalResponse = await fetch(`${HUGGING_FACE_API_URL}/${eventId}`, {
-        method: "GET",
-      });
-
-      const finalResponseText = await finalResponse.text();
-      console.log("Final Response Text:", finalResponseText);
-
-      if (!finalResponse.ok) {
-        throw new Error(`Final request failed: ${finalResponseText}`);
-      }
-
-      // Extract the JSON data from the SSE response
-      const dataLine = finalResponseText
-        .split("\n")
-        .find((line) => line.startsWith("data: "));
-      if (!dataLine) {
-        throw new Error("No data found in the response");
-      }
-
-      const finalResult = JSON.parse(dataLine.replace("data: ", ""));
-      console.log("Final Result:", finalResult);
-
-      if (!finalResult || !finalResult[0] || !finalResult[0].url) {
-        throw new Error("Invalid result structure");
-      }
-
-      const generatedImageUrl = finalResult[0].url;
-
-      setGeneratedImage(generatedImageUrl);
-      setError(""); // Reset error state on successful image generation
-    } catch (error: any) {
-      console.error("Error generating image:", error);
-      setError("Failed to generate image: " + error.message);
-      setGeneratedImage(null); // Reset generatedImage state to null on error
-    } finally {
-      setLoading(false);
+      console.log("Result", imageResult);
+    } catch (err) {
+      console.log("ERROR OCCURED", err);
+      setError("Failed to generate image. Please try again.");
     }
   };
 
+  const clearFields = () => {
+    setPrompt("");
+    setBedrooms("");
+    setBathrooms("");
+    setGeneratedImage(null);
+    setError("");
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-      <div className="max-w-xl w-full px-4 py-8 md:px-6 md:py-12">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Generate AI-Powered Images
-          </h1>
-          <p className="text-muted-foreground">
-            Provide a prompt to generate a unique AI-created image.
-          </p>
+    <div className="flex flex-col md:flex-row min-h-screen text-white">
+      <div className="flex-1 flex flex-col items-center justify-center">
+        {generatedImage ? (
+          <img
+            src={generatedImage}
+            alt="Your dream house"
+            className="w-full p-2 rounded object-contain"
+            style={{ borderRadius: "20px" }}
+          />
+        ) : (
+          <ImageIcon className="w-48 h-48 text-gray-400" />
+        )}
+      </div>
+      <div className="w-full md:w-96 bg-gray-800 p-6">
+        <div className="flex justify-between mb-4">
+          <button className="text-white">
+            <ArrowLeftIcon className="w-6 h-6" />
+          </button>
         </div>
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="prompt">Prompt</Label>
+            <Label className="block mb-2">Your prompt</Label>
             <Textarea
-              id="prompt"
-              name="prompt"
+              className="text-black"
               value={prompt}
-              onChange={(e: any) => setPrompt(e.target.value)}
-              placeholder="Describe the image you want to generate..."
-              className="mt-1"
-              rows={3}
+              onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
+          <div>
+            <Label className="block mb-2">Select bedroom number</Label>
+            <Select value={bedrooms} onValueChange={setBedrooms}>
+              <SelectTrigger className="text-black">
+                <SelectValue
+                  placeholder="Select an option"
+                  className="text-black"
+                />
+              </SelectTrigger>
+              <SelectContent className="text-black">
+                <SelectItem value="1" className="text-black">
+                  1
+                </SelectItem>
+                <SelectItem value="2" className="text-black">
+                  2
+                </SelectItem>
+                <SelectItem value="3" className="text-black">
+                  3
+                </SelectItem>
+                <SelectItem value="4" className="text-black">
+                  4
+                </SelectItem>
+                <SelectItem value="5" className="text-black">
+                  5
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="block mb-2">Select bathroom number</Label>
+            <Select value={bathrooms} onValueChange={setBathrooms}>
+              <SelectTrigger className="text-black">
+                <SelectValue
+                  placeholder="Select an option"
+                  className="text-black"
+                />
+              </SelectTrigger>
+              <SelectContent className="text-black">
+                <SelectItem value="1" className="text-black">
+                  1
+                </SelectItem>
+                <SelectItem value="2" className="text-black">
+                  2
+                </SelectItem>
+                <SelectItem value="3" className="text-black">
+                  3
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Generating..." : "Generate Image"}
+            {loading ? "Generating..." : "Generate plan"}
           </Button>
         </form>
-      </div>
-      <div className="max-w-xl w-full px-4 py-8 md:px-6 md:py-12">
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Your Generated Image
-          </h2>
-          <div className="aspect-w-16 aspect-h-9 overflow-hidden rounded-lg bg-muted">
-            {generatedImage !== null ? (
-              <img
-                src={generatedImage}
-                alt="Generated Image"
-                className="w-full h-full object-contain"
-              />
-            ) : error ? (
-              <p className="text-base text-red-500">{error}</p>
-            ) : (
-              <p className="text-base text-muted-foreground">
-                No image generated yet.
-              </p>
-            )}
-          </div>
+        <div className="mt-4 flex justify-between">
+          <button className="text-white" onClick={clearFields}>
+            Clear All
+          </button>
+          <button className="bg-yellow-500 text-black px-4 py-2 rounded">
+            Save
+          </button>
         </div>
       </div>
     </div>
