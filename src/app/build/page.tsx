@@ -103,7 +103,7 @@ export default function Component() {
           <img
             src={generatedImage}
             alt="Your dream house"
-            className="w-full p-2 rounded object-contain"
+            className="w-full p-2 h-[100dvh] rounded object-contain"
             style={{ borderRadius: "20px" }}
           />
         ) : (
